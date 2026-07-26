@@ -43,10 +43,9 @@ def create_workout():
     data = request.get_json()
     schema = WorkoutSchema()
     try:
-        validated_data = schema.load(data)
+        workout = schema.load(data)
     except ValidationError as err:
         return jsonify(err.messages), 400
-    workout = Workout(**validated_data)
     db.session.add(workout)
     db.session.commit()
     return jsonify(schema.dump(workout)), 201
@@ -54,7 +53,6 @@ def create_workout():
 @app.route('/workouts/<int:id>', methods=['DELETE'])
 def delete_workout(id):
     workout = Workout.query.get_or_404(id)
-    # Cascade delete is configured on the relationship, so associated WorkoutExercises will be deleted
     db.session.delete(workout)
     db.session.commit()
     return jsonify({'message': 'Workout deleted'}), 200
@@ -77,10 +75,9 @@ def create_exercise():
     data = request.get_json()
     schema = ExerciseSchema()
     try:
-        validated_data = schema.load(data)
+        exercise = schema.load(data)
     except ValidationError as err:
         return jsonify(err.messages), 400
-    exercise = Exercise(**validated_data)
     db.session.add(exercise)
     db.session.commit()
     return jsonify(schema.dump(exercise)), 201
@@ -88,35 +85,27 @@ def create_exercise():
 @app.route('/exercises/<int:id>', methods=['DELETE'])
 def delete_exercise(id):
     exercise = Exercise.query.get_or_404(id)
-    # Cascade delete will remove WorkoutExercises
     db.session.delete(exercise)
     db.session.commit()
     return jsonify({'message': 'Exercise deleted'}), 200
 
-# ----- Add exercise to workout (WorkoutExercise creation) -----
+# ----- Add exercise to workout -----
 @app.route('/workouts/<int:workout_id>/exercises/<int:exercise_id>/workout_exercises', methods=['POST'])
 def add_exercise_to_workout(workout_id, exercise_id):
     workout = Workout.query.get_or_404(workout_id)
     exercise = Exercise.query.get_or_404(exercise_id)
     data = request.get_json() or {}
-    # Validate with WorkoutExerciseSchema (partial to allow missing fields)
     schema = WorkoutExerciseSchema(partial=('workout_id', 'exercise_id'))
     try:
-        validated_data = schema.load(data)
+        we = schema.load(data)
+        we.workout_id = workout.id
+        we.exercise_id = exercise.id
     except ValidationError as err:
         return jsonify(err.messages), 400
 
-    # Create the join record
-    we = WorkoutExercise(
-        workout_id=workout.id,
-        exercise_id=exercise.id,
-        reps=validated_data.get('reps'),
-        sets=validated_data.get('sets'),
-        duration_seconds=validated_data.get('duration_seconds')
-    )
     db.session.add(we)
     db.session.commit()
-    return jsonify(schema.dump(we)), 201
+    return jsonify(WorkoutExerciseSchema().dump(we)), 201
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+    app.run(debug=True)
