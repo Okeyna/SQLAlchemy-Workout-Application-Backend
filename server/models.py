@@ -23,7 +23,12 @@ class Exercise(db.Model):
         return value.strip()
 
     workout_exercises = db.relationship('WorkoutExercise', back_populates='exercise', cascade='all, delete-orphan')
-    workouts = db.relationship('Workout', secondary='workout_exercises', back_populates='exercises')
+    workouts = db.relationship(
+        'Workout',
+        secondary='workout_exercises',
+        back_populates='exercises',
+        overlaps="workout_exercises"   # silences overlap warning
+    )
 
     def __repr__(self):
         return f'<Exercise {self.name}>'
@@ -54,7 +59,12 @@ class Workout(db.Model):
         return value
 
     workout_exercises = db.relationship('WorkoutExercise', back_populates='workout', cascade='all, delete-orphan')
-    exercises = db.relationship('Exercise', secondary='workout_exercises', back_populates='workouts')
+    exercises = db.relationship(
+        'Exercise',
+        secondary='workout_exercises',
+        back_populates='workouts',
+        overlaps="workout_exercises"
+    )
 
     def __repr__(self):
         return f'<Workout {self.date}>'
@@ -76,8 +86,16 @@ class WorkoutExercise(db.Model):
         CheckConstraint('duration_seconds >= 0', name='ck_workout_exercise_duration_nonneg'),
     )
 
-    workout = db.relationship('Workout', back_populates='workout_exercises')
-    exercise = db.relationship('Exercise', back_populates='workout_exercises')
+    workout = db.relationship(
+        'Workout',
+        back_populates='workout_exercises',
+        overlaps="exercises,workouts"   # silences overlap warnings
+    )
+    exercise = db.relationship(
+        'Exercise',
+        back_populates='workout_exercises',
+        overlaps="exercises,workouts"
+    )
 
     @db.validates('reps')
     def validate_reps(self, key, value):

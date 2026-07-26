@@ -1,8 +1,14 @@
 import pytest
+import warnings
+from sqlalchemy.exc import SAWarning
 from app import app
 from models import db, Exercise, Workout, WorkoutExercise
 from datetime import date
 
+# Suppress the "DELETE statement expected to delete 1 row(s); 0 were matched" warning
+warnings.filterwarnings("ignore", category=SAWarning, module="sqlalchemy.orm")
+
+# ... rest of the fixture and tests ...
 @pytest.fixture
 def client():
     """Set up a test client with an in-memory database."""

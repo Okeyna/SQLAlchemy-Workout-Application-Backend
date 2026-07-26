@@ -1,9 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_migrate import Migrate
 from models import db, Exercise, Workout, WorkoutExercise
 from schemas import ExerciseSchema, WorkoutSchema, WorkoutDetailSchema, ExerciseDetailSchema, WorkoutExerciseSchema
 from marshmallow import ValidationError
-import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///workout.db'
@@ -34,7 +33,9 @@ def list_workouts():
 
 @app.route('/workouts/<int:id>', methods=['GET'])
 def get_workout(id):
-    workout = Workout.query.get_or_404(id)
+    workout = db.session.get(Workout, id)
+    if workout is None:
+        abort(404)
     schema = WorkoutDetailSchema()
     return jsonify(schema.dump(workout))
 
@@ -52,7 +53,9 @@ def create_workout():
 
 @app.route('/workouts/<int:id>', methods=['DELETE'])
 def delete_workout(id):
-    workout = Workout.query.get_or_404(id)
+    workout = db.session.get(Workout, id)
+    if workout is None:
+        abort(404)
     db.session.delete(workout)
     db.session.commit()
     return jsonify({'message': 'Workout deleted'}), 200
@@ -66,7 +69,9 @@ def list_exercises():
 
 @app.route('/exercises/<int:id>', methods=['GET'])
 def get_exercise(id):
-    exercise = Exercise.query.get_or_404(id)
+    exercise = db.session.get(Exercise, id)
+    if exercise is None:
+        abort(404)
     schema = ExerciseDetailSchema()
     return jsonify(schema.dump(exercise))
 
@@ -84,7 +89,9 @@ def create_exercise():
 
 @app.route('/exercises/<int:id>', methods=['DELETE'])
 def delete_exercise(id):
-    exercise = Exercise.query.get_or_404(id)
+    exercise = db.session.get(Exercise, id)
+    if exercise is None:
+        abort(404)
     db.session.delete(exercise)
     db.session.commit()
     return jsonify({'message': 'Exercise deleted'}), 200
@@ -92,8 +99,12 @@ def delete_exercise(id):
 # ----- Add exercise to workout -----
 @app.route('/workouts/<int:workout_id>/exercises/<int:exercise_id>/workout_exercises', methods=['POST'])
 def add_exercise_to_workout(workout_id, exercise_id):
-    workout = Workout.query.get_or_404(workout_id)
-    exercise = Exercise.query.get_or_404(exercise_id)
+    workout = db.session.get(Workout, workout_id)
+    if workout is None:
+        abort(404)
+    exercise = db.session.get(Exercise, exercise_id)
+    if exercise is None:
+        abort(404)
     data = request.get_json() or {}
     schema = WorkoutExerciseSchema(partial=('workout_id', 'exercise_id'))
     try:
